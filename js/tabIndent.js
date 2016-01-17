@@ -1,7 +1,7 @@
 tabIndent = {
 	version: '0.1.8',
 	config: {
-		tab: '\t'
+		tab: '\t',
 		focusDelay: 500
 	},
 	events: {

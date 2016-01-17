@@ -2,7 +2,8 @@ tabIndent = {
 	version: '0.1.8',
 	config: {
 		//tab: '\t'
-		tab: '\u00A0 \u00A0 \u00A0 '
+		tab: '\u00A0 \u00A0 \u00A0 ',
+		focusDelay: 500
 	},
 	events: {
 		keydown: function(e) {
@@ -157,7 +158,7 @@ tabIndent = {
 
 					if (el.nodeName === 'BODY')
 						el.removeEventListener('click', self.events.focus);
-				}, 500);
+				}, tabIndent.config.focusDelay);
 
 			// If they were just tabbing through the input, let them continue unimpeded
 			el.addEventListener('blur', function b() {
@@ -342,7 +343,6 @@ tabIndent = {
 		    caretPos = tempRange.text.length;
 		  }
 		}
-					console.log('caretPos', caretPos);
 		return caretPos;
 	},
 	setCaretPosition: function(editableDiv, node, position){

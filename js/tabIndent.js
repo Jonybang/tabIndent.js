@@ -2,7 +2,7 @@ tabIndent = {
 	version: '0.1.8',
 	config: {
 		//tab: '\t'
-		tab: '\u00A0\u00A0\u00A0\u00A0'
+		tab: '\u00A0 \u00A0 \u00A0 '
 	},
 	events: {
 		keydown: function(e) {
@@ -16,9 +16,8 @@ tabIndent = {
 					// Normal Tab Behaviour
 					if (!tabIndent.isMultiLine(this)) {
 						// Add tab before selection, maintain highlighted text selection
-						tabIndent.elText(this, (tabIndent.elText(this).slice(0, currentStart) + tab + tabIndent.elText(this).slice(currentStart)));
-						this.selectionStart = currentStart + tabWidth;
-						this.selectionEnd = currentEnd + tabWidth;
+						tabWidth = tabIndent.createTab(this, currentStart, currentStart);
+						tabIndent.setCursorPosition(this, currentStart, tabWidth);
 					} else {
 						// Iterating through the startIndices, if the index falls within selectionStart and selectionEnd, indent it there.
 						var	startIndices = tabIndent.findStartIndices(this),
@@ -89,12 +88,12 @@ tabIndent = {
 				tabIndent.events.disable(e);
 			} else if (e.keyCode === 13 && e.shiftKey === false) {	// Enter
 				var	self = tabIndent,
-					cursorPos = this.selectionStart,
+					cursorPos = tabIndent.getSelectionStart(this),
 					startIndices = self.findStartIndices(this),
 					numStartIndices = startIndices.length,
 					startIndex = 0,
 					endIndex = 0,
-					tabMatch = new RegExp("^" + tab.replace('\t', '\\t').replace(/ /g, '\\s') + "+", 'g'),
+					tabMatch = new RegExp("^" + tab.replace(tabIndent.getTabSymbol(this), tabIndent.getTabSymbol(this, true)).replace(/ /g, '\\s') + "+", 'g'),
 					lineText = '';
 					tabs = null;
 
@@ -121,9 +120,9 @@ tabIndent = {
 						indentText = indentText.slice(0, inLinePos);
 					}
 					
-					tabIndent.elText(this, (tabIndent.elText(this).slice(0, cursorPos) + "\n" + indentText + tabIndent.elText(this).slice(cursorPos)));
-					this.selectionStart = cursorPos + indentWidth + 1;
-					this.selectionEnd = this.selectionStart;
+					tabIndent.createEnter(this, cursorPos, indentText);
+
+					tabIndent.setCursorNextLinePosition(this, cursorPos, indentWidth);
 				}
 			}
 		},
@@ -154,7 +153,10 @@ tabIndent = {
 					classes.push('tabIndent-rendered');
 					el.setAttribute('class', classes.join(' '));
 
-					el.removeEventListener('focus', self.events.keydown);
+					el.removeEventListener('focus', self.events.focus);
+
+					if (el.nodeName === 'BODY')
+						el.removeEventListener('click', self.events.focus);
 				}, 500);
 
 			// If they were just tabbing through the input, let them continue unimpeded
@@ -171,9 +173,12 @@ tabIndent = {
 		if (el.nodeName) {
 			el.addEventListener('focus', self.events.focus);
 
+			if (el.nodeName === 'BODY')
+				el.addEventListener('click', self.events.focus);
+
 			el.addEventListener('keydown', self.events.saveDivCursorPosition);
-			el.addEventListener('keyup', self.events.saveDivCursorPosition);
-			el.addEventListener('mousedown', self.events.saveDivCursorPosition);
+			//el.addEventListener('keyup', self.events.saveDivCursorPosition);
+			//el.addEventListener('mousedown', self.events.saveDivCursorPosition);
 			el.addEventListener('mouseup', self.events.saveDivCursorPosition);
 
 			el.addEventListener('blur', function b(e) {
@@ -238,6 +243,36 @@ tabIndent = {
 			el = undefined;
 		}
 	},
+	createEnter: function(el, enterPos, indentText) {
+		var text = tabIndent.elText(this);
+		if(el.nodeName === 'TEXTAREA')
+			tabIndent.elText(this, (text.slice(0, enterPos) + '\n' + indentText + text.slice(enterPos)));
+		else {
+			tabIndent.elText(this, (text.slice(0, enterPos)));
+			tabIndent.insertBrInDiv();
+			tabIndent.insertTextAfterBrInDiv(indentText + '\u00A0' + text.slice(enterPos));
+		}
+	},
+	createTab: function (el, from, to) {
+		var text = tabIndent.elText(el);
+		var tab = '';
+		if(el.nodeName === 'TEXTAREA')
+			tab = tabIndent.config.tab;
+		else 
+			tab = tabIndent.config.tab + (from == 0 ? ' ' : '');
+
+		tabIndent.elText(this, (text.slice(0, from) + tab + text.slice(to)));
+		return tab.length;
+	},
+	insertAfter: function (referenceNode, newNode) {
+		referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+	},
+	insertBrInDiv: function(){
+  	tabIndent.insertAfter(tabIndent.anchorNode, document.createElement("br"));
+	},
+	insertTextAfterBrInDiv: function(text){
+  	tabIndent.insertAfter(tabIndent.anchorNode.nextSibling, document.createTextNode(text));
+	},
 	elText: function(el, setText) {
 		var propName = '';
 
@@ -253,6 +288,30 @@ tabIndent = {
 
 		return el[propName];
 	},
+	getTabSymbol: function(el, withSlash){
+		if(el.nodeName === 'TEXTAREA')
+			return withSlash ? '\\t' : '\t';
+		else
+			return withSlash ? '\\u00A0' : '\u00A0';
+	},
+	setCursorNextLinePosition: function(el, cursorPos, indentWidth){
+		if(el.nodeName === 'TEXTAREA') {
+			el.selectionStart = cursorPos + indentWidth + 1;
+			el.selectionEnd = el.selectionStart;
+		}
+		else {
+			tabIndent.setCaretPosition(el, tabIndent.anchorNode.nextSibling.nextSibling, indentWidth);
+		}
+	},
+	setCursorPosition: function(el, cursorPos, indentWidth){
+		if(el.nodeName === 'TEXTAREA') {
+			el.selectionStart = cursorPos + indentWidth;
+			el.selectionEnd = cursorPos + indentWidth;
+		}
+		else {
+			tabIndent.setCaretPosition(el, tabIndent.anchorNode, cursorPos + indentWidth);
+		}
+	},
 	getSelectionStart: function(el){
 		if(el.nodeName === 'TEXTAREA')
 			return el.selectionStart;
@@ -265,17 +324,15 @@ tabIndent = {
 		  sel, range;
 		if (window.getSelection) {
 		  sel = window.getSelection();
-			console.log('selection', sel);
 		  if (sel.rangeCount) {
 		    range = sel.getRangeAt(0);
-				console.log('get range', range);
-		    if (range.commonAncestorContainer.parentNode == editableDiv) {
+		    if (range.commonAncestorContainer.parentNode == editableDiv ||
+						range.commonAncestorContainer.parentNode.parentNode == editableDiv) {
 		      caretPos = range.endOffset;
 		    }
 		  }
 		} else if (document.selection && document.selection.createRange) {
 		  range = document.selection.createRange();
-			console.log('create range', range);
 		  if (range.parentElement() == editableDiv) {
 		    var tempEl = document.createElement("span");
 		    editableDiv.insertBefore(tempEl, editableDiv.firstChild);
@@ -285,7 +342,18 @@ tabIndent = {
 		    caretPos = tempRange.text.length;
 		  }
 		}
+					console.log('caretPos', caretPos);
 		return caretPos;
+	},
+	setCaretPosition: function(editableDiv, node, position){
+		position = position ? position : 0;
+		var range = document.createRange();
+		var sel = window.getSelection();
+		range.setStart(node, position);
+		range.setEnd(node, position);
+		//range.collapse(true);
+		sel.removeAllRanges();
+		sel.addRange(range);
 	},
 	isMultiLine: function(el) {
 		// Extract the selection

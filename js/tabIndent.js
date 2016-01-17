@@ -1,7 +1,8 @@
 tabIndent = {
 	version: '0.1.8',
 	config: {
-		tab: '\t'
+		//tab: '\t'
+		tab: '\u00A0\u00A0\u00A0\u00A0'
 	},
 	events: {
 		keydown: function(e) {
@@ -9,13 +10,13 @@ tabIndent = {
 			var tabWidth = tab.length;
 			if (e.keyCode === 9) {
 				e.preventDefault();
-				var	currentStart = this.selectionStart,
+				var	currentStart = tabIndent.getSelectionStart(this),
 					currentEnd = this.selectionEnd;
 				if (e.shiftKey === false) {
 					// Normal Tab Behaviour
 					if (!tabIndent.isMultiLine(this)) {
 						// Add tab before selection, maintain highlighted text selection
-						this.value = this.value.slice(0, currentStart) + tab + this.value.slice(currentStart);
+						tabIndent.elText(this, (tabIndent.elText(this).slice(0, currentStart) + tab + tabIndent.elText(this).slice(currentStart)));
 						this.selectionStart = currentStart + tabWidth;
 						this.selectionEnd = currentEnd + tabWidth;
 					} else {
@@ -31,7 +32,7 @@ tabIndent = {
 							if (startIndices[l+1] && currentStart != startIndices[l+1]) lowerBound = startIndices[l+1];
 
 							if (lowerBound >= currentStart && startIndices[l] < currentEnd) {
-								this.value = this.value.slice(0, startIndices[l]) + tab + this.value.slice(startIndices[l]);
+								tabIndent.elText(this, (tabIndent.elText(this).slice(0, startIndices[l]) + tab + tabIndent.elText(this).slice(startIndices[l])));
 
 								newStart = startIndices[l];
 								if (!newEnd) newEnd = (startIndices[l+1] ? startIndices[l+1] - 1 : 'end');
@@ -40,19 +41,19 @@ tabIndent = {
 						}
 
 						this.selectionStart = newStart;
-						this.selectionEnd = (newEnd !== 'end' ? newEnd + (tabWidth * affectedRows) : this.value.length);
+						this.selectionEnd = (newEnd !== 'end' ? newEnd + (tabWidth * affectedRows) : tabIndent.elText(this).length);
 					}
 				} else {
 					// Shift-Tab Behaviour
 					if (!tabIndent.isMultiLine(this)) {
-						if (this.value.substr(currentStart - tabWidth, tabWidth) == tab) {
+						if (tabIndent.elText(this).substr(currentStart - tabWidth, tabWidth) == tab) {
 							// If there's a tab before the selectionStart, remove it
-							this.value = this.value.substr(0, currentStart - tabWidth) + this.value.substr(currentStart);
+							tabIndent.elText(this, (tabIndent.elText(this).substr(0, currentStart - tabWidth) + tabIndent.elText(this).substr(currentStart)));
 							this.selectionStart = currentStart - tabWidth;
 							this.selectionEnd = currentEnd - tabWidth;
-						} else if (this.value.substr(currentStart - 1, 1) == "\n" && this.value.substr(currentStart, tabWidth) == tab) {
+						} else if (tabIndent.elText(this).substr(currentStart - 1, 1) == "\n" && tabIndent.elText(this).substr(currentStart, tabWidth) == tab) {
 							// However, if the selection is at the start of the line, and the first character is a tab, remove it
-							this.value = this.value.substring(0, currentStart) + this.value.substr(currentStart + tabWidth);
+							tabIndent.elText(this, (tabIndent.elText(this).substring(0, currentStart) + tabIndent.elText(this).substr(currentStart + tabWidth)));
 							this.selectionStart = currentStart;
 							this.selectionEnd = currentEnd - tabWidth;
 						}
@@ -69,9 +70,9 @@ tabIndent = {
 							if (startIndices[l+1] && currentStart != startIndices[l+1]) lowerBound = startIndices[l+1];
 
 							if (lowerBound >= currentStart && startIndices[l] < currentEnd) {
-								if (this.value.substr(startIndices[l], tabWidth) == tab) {
+								if (tabIndent.elText(this).substr(startIndices[l], tabWidth) == tab) {
 									// Remove a tab
-									this.value = this.value.slice(0, startIndices[l]) + this.value.slice(startIndices[l] + tabWidth);
+									tabIndent.elText(this, (tabIndent.elText(this).slice(0, startIndices[l]) + tabIndent.elText(this).slice(startIndices[l] + tabWidth)));
 									affectedRows++;
 								} else {}	// Do nothing
 
@@ -81,7 +82,7 @@ tabIndent = {
 						}
 
 						this.selectionStart = newStart;
-						this.selectionEnd = (newEnd !== 'end' ? newEnd - (affectedRows * tabWidth) : this.value.length);
+						this.selectionEnd = (newEnd !== 'end' ? newEnd - (affectedRows * tabWidth) : tabIndent.elText(this).length);
 					}
 				}
 			} else if (e.keyCode === 27) {	// Esc
@@ -104,11 +105,11 @@ tabIndent = {
 						break;
 					} else {
 						startIndex = startIndices[numStartIndices-1];
-						endIndex = this.value.length;
+						endIndex = tabIndent.elText(this).length;
 					}
 				}
 
-				lineText = this.value.slice(startIndex, endIndex);
+				lineText = tabIndent.elText(this).slice(startIndex, endIndex);
 				tabs = lineText.match(tabMatch);
 				if (tabs !== null) {
 					e.preventDefault();
@@ -120,11 +121,15 @@ tabIndent = {
 						indentText = indentText.slice(0, inLinePos);
 					}
 					
-					this.value = this.value.slice(0, cursorPos) + "\n" + indentText + this.value.slice(cursorPos);
+					tabIndent.elText(this, (tabIndent.elText(this).slice(0, cursorPos) + "\n" + indentText + tabIndent.elText(this).slice(cursorPos)));
 					this.selectionStart = cursorPos + indentWidth + 1;
 					this.selectionEnd = this.selectionStart;
 				}
 			}
+		},
+		saveDivCursorPosition: function(e){
+			tabIndent.cursorPosition = tabIndent.getCaretPosition(this);
+			tabIndent.anchorNode = window.getSelection().anchorNode;
 		},
 		disable: function(e) {
 			var events = this;
@@ -140,6 +145,7 @@ tabIndent = {
 					contains = classes.indexOf('tabIndent');
 
 					el.addEventListener('keydown', self.events.keydown);
+
 					el.style.backgroundImage = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAAmJLR0QA/4ePzL8AAAAJcEhZcwAAAEgAAABIAEbJaz4AAAKZSURBVEjH7ZRfSFNRHMe/9+/+3G26tUn+ycywgURgUBAUJlIhWlEQEjN8yQcfolKJxJAefOjRCnT0IPYQ9iRa9FAYJiaUVP4twf7gzJzpnDbdzHt3z+3Fua3dO4Ne/f5ezjmc8+F7zvmeA2zrv0VFGlexAssFw1mG1pqqUL8npGY60Bw3ykYaOVjlrFXmEyw0AQj6g53UONQBO8DBzuiT2tUx+gR/mwACBQpIUoACBZoAZaOSiWwFIFs4oMMS9/boZVF8T8vtkbEofatiRKF9mXK6M7tTyyxRaPwWtJezIu9+9cNzxHk/n9938rz6IWpvgRdZd5/HcsvC9jadqk6Z0qkBiCaAF3UtX8cy6h1mwlnLhsuZuRvqABlyNJqb0q0ZWsb7uUVHlXAahWl1y3M2tVuQVR1Q0Pl0dwZ67KbZtGnX/ma++/FsCCY1ANlAxIuT2NZP3XB/GRKc9qKhKTYnd4auJbIqINEBDa5zoWWByoS1jocR+loKpKGJKqBLybN/OQN2Tmodv4jCtYIMYurnP5sLf+V5XK4DbFv4haaDCEABA/J88GdegD1I2+heY0Xj7M1itiMjP8srzutjXMbkIDZKCrAcfGOt8LwODimYnzzjLcHIx5VFwPekZrhVPYmxyVNAvZP8KV28SykClo6XF4/t9LpC2TTIteulJepJjD5nCjL8E56sMHt40NYYqE51ZnZIfmGXYBC68p/6v6UkApSI8Y2ejPVKhyE0PdLDPcg+Z003G0W7YUmmvo/WtjXgbiKAAQNGpjYRDOwWILx3dV16ZBsx3QsdYi4JNUw6uCvMbrUcWFAvPWznfH9/GQHR5xAbPuTumRFWvS+ZwDGyJFfidkxWk2oaIfTRk8RI0YqMAQBAL7YVrz/iUDx4QII4/QAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxMi0xMi0wMVQwMDowNjo0My0wNTowMLKpTWYAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTItMTItMDFUMDA6MDY6NDMtMDU6MDDD9PXaAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAABJRU5ErkJggg==)";
 					el.style.backgroundPosition = 'top right';
 					el.style.backgroundRepeat = 'no-repeat';
@@ -161,8 +167,14 @@ tabIndent = {
 	render: function(el) {
 		var self = this;
 
-		if (el.nodeName === 'TEXTAREA') {
+		//if (el.nodeName === 'TEXTAREA') {
+		if (el.nodeName) {
 			el.addEventListener('focus', self.events.focus);
+
+			el.addEventListener('keydown', self.events.saveDivCursorPosition);
+			el.addEventListener('keyup', self.events.saveDivCursorPosition);
+			el.addEventListener('mousedown', self.events.saveDivCursorPosition);
+			el.addEventListener('mouseup', self.events.saveDivCursorPosition);
 
 			el.addEventListener('blur', function b(e) {
 				self.events.disable(e);
@@ -226,16 +238,65 @@ tabIndent = {
 			el = undefined;
 		}
 	},
+	elText: function(el, setText) {
+		var propName = '';
+
+		if(el.nodeName === 'TEXTAREA')
+			propName = 'value';
+		else{
+			el = tabIndent.anchorNode;
+			propName = 'textContent';
+		}
+		
+		if(setText)
+			el[propName] = setText;
+
+		return el[propName];
+	},
+	getSelectionStart: function(el){
+		if(el.nodeName === 'TEXTAREA')
+			return el.selectionStart;
+		else
+			return tabIndent.cursorPosition;
+	},
+	getCaretPosition: function(editableDiv) {
+		//Get from: http://stackoverflow.com/a/3976125
+		var caretPos = 0,
+		  sel, range;
+		if (window.getSelection) {
+		  sel = window.getSelection();
+			console.log('selection', sel);
+		  if (sel.rangeCount) {
+		    range = sel.getRangeAt(0);
+				console.log('get range', range);
+		    if (range.commonAncestorContainer.parentNode == editableDiv) {
+		      caretPos = range.endOffset;
+		    }
+		  }
+		} else if (document.selection && document.selection.createRange) {
+		  range = document.selection.createRange();
+			console.log('create range', range);
+		  if (range.parentElement() == editableDiv) {
+		    var tempEl = document.createElement("span");
+		    editableDiv.insertBefore(tempEl, editableDiv.firstChild);
+		    var tempRange = range.duplicate();
+		    tempRange.moveToElementText(tempEl);
+		    tempRange.setEndPoint("EndToEnd", range);
+		    caretPos = tempRange.text.length;
+		  }
+		}
+		return caretPos;
+	},
 	isMultiLine: function(el) {
 		// Extract the selection
-		var	snippet = el.value.slice(el.selectionStart, el.selectionEnd),
+		var	snippet = tabIndent.elText(el).slice(el.selectionStart, el.selectionEnd),
 			nlRegex = new RegExp(/\n/);
 
 		if (nlRegex.test(snippet)) return true;
 		else return false;
 	},
 	findStartIndices: function(el) {
-		var	text = el.value,
+		var	text = tabIndent.elText(el),
 			startIndices = [],
 			offset = 0;
 
